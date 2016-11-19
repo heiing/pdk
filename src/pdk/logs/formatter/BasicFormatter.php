@@ -26,7 +26,7 @@ class BasicFormatter implements Formatter {
     }
     
     public function format($level, $message) {
-        return sprintf("%s [%s] %s%s", date($this->timeFormat), Level::getName($level), $message, $this->ln);
+        return date($this->timeFormat) . ' [' . Level::getName($level) . "] {$message}{$this->ln}";
     }
     
 }

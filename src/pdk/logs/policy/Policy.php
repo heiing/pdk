@@ -43,17 +43,7 @@ abstract class Policy {
      * @return boolean
      */
     public function hasLevel($level) {
-        return $this->hasLevelIn($this->getLevels(), $level);
-    }
-    
-    /**
-     * 判断是否已经包含了指定的日志水平
-     * @param int $levels
-     * @param int $level
-     * @return boolean
-     */
-    private function hasLevelIn($levels, $level) {
-        return ($levels & $level) === $level;
+        return Level::hasLevel($this->getLevels(), $level);
     }
     
     /**
@@ -77,8 +67,8 @@ abstract class Policy {
      */
     public function setWriter($levels, Writer $writer) {
         for ($i = 0; $i <= Level::TopExponent; $i++) {
-            if ($this->hasLevel($i) && $this->hasLevelIn($levels, $i)) {
-                $this->writers[$i] = $writer;
+            if ($this->hasLevel($i) && Level::hasLevel($levels, $i)) {
+                $this->writers[1 << $i] = $writer;
             }
         }
         return $this;
@@ -105,8 +95,8 @@ abstract class Policy {
      */
     public function setFormatter($levels, Formatter $formatter) {
         for ($i = 0; $i <= Level::TopExponent; $i++) {
-            if ($this->hasLevel($i) && $this->hasLevelIn($levels, $i)) {
-                $this->formatters[$i] = $formatter;
+            if ($this->hasLevel($i) && Level::hasLevel($levels, $i)) {
+                $this->formatters[1 << $i] = $formatter;
             }
         }
         return $this;

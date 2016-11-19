@@ -105,4 +105,14 @@ class Level {
         }
     }
     
+    /**
+     * 检查 $levels 中是否包含 $checkLevel
+     * @param int $levels
+     * @param int $checkLevel
+     * @return boolean
+     */
+    public static function hasLevel($levels, $checkLevel) {
+        return ($levels & $checkLevel) === $checkLevel;
+    }
+    
 }
