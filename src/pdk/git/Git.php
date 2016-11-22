@@ -36,8 +36,11 @@ class Git {
     private function exec($cmd) {
         $ret = 0;
         $out = [];
-        $command = "{$this->bin} {$cmd}";
+        $command = "cd '{$this->git}'; '{$this->bin}' {$cmd}";
+        $curwd = getcwd();
+        chdir($this->git);
         exec($command, $out, $ret);
+        chdir($curwd);
         if (0 !== (int)$ret) {
             throw new GitException("Execute git[exit code: {$ret}] faild: [{$command}], error outputs: " . implode("\n", $out));
         }

@@ -2,6 +2,8 @@
 
 namespace heiing\pdk\git\obj;
 
+use heiing\pdk\git\GitException;
+
 /**
  * Tag
  *
@@ -18,7 +20,7 @@ class Tag extends Obj {
     }
 
     public function parseFromLines($lines) {
-        
+        throw new GitException("UnImplemented, lines: " . implode("\n", $lines));
     }
     
 }

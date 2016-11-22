@@ -9,6 +9,8 @@ namespace heiing\pdk\git\obj;
  */
 class Blob extends Obj {
     
+    private $content = '';
+    
     public function __construct($id) {
         parent::setId($id);
     }
@@ -16,9 +18,13 @@ class Blob extends Obj {
     public function getType() {
         return 'blob';
     }
+    
+    public function getContent() {
+        return $this->content;
+    }
 
     public function parseFromLines($lines) {
-        
+        $this->content = implode('', $lines);
     }
 
 }
