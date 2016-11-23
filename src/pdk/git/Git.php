@@ -44,6 +44,19 @@ class Git {
     }
     
     /**
+     * 将指定的文件增加到缓存中：git add [files]
+     * @param string|array $files
+     */
+    public function add($files) {
+        if (is_string($files)) {
+            $files = [$files];
+        }
+        foreach ($files as $file) {
+            $this->exec("add {$file}");
+        }
+    }
+    
+    /**
      * 通过对象名查询对象的 sha-1 的值
      * @param string $objectName 对象名，如引用名 master, HEAD、tab、sha-1
      * @throws \heiing\pdk\git\GitException
