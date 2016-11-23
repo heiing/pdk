@@ -28,23 +28,19 @@ class Git {
     }
     
     /**
-     * 执行 git 命令
-     * @param string $cmd git 命令，如 push, pull 等
-     * @return array
-     * @throws \heiing\pdk\git\GitException
+     * 返回 git 仓库的路径
+     * @return string
      */
-    private function exec($cmd) {
-        $ret = 0;
-        $out = [];
-        $command = "cd '{$this->git}'; '{$this->bin}' {$cmd}";
-        $curwd = getcwd();
-        chdir($this->git);
-        exec($command, $out, $ret);
-        chdir($curwd);
-        if (0 !== (int)$ret) {
-            throw new GitException("Execute git[exit code: {$ret}] faild: [{$command}], error outputs: " . implode("\n", $out));
-        }
-        return $out;
+    public function getPathname() {
+        return $this->git;
+    }
+    
+    /**
+     * 初始化仓库
+     * @param boolean $isbare
+     */
+    public function init($isbare = false) {
+        $this->exec($isbare ? "init --bare" : "init");
     }
     
     /**
@@ -100,5 +96,25 @@ class Git {
         $lines = $this->exec("cat-file -p {$rev}");
         $obj->parseFromLines($lines);
         return $obj;
+    }
+    
+    /**
+     * 执行 git 命令
+     * @param string $cmd git 命令，如 push, pull 等
+     * @return array
+     * @throws \heiing\pdk\git\GitException
+     */
+    private function exec($cmd) {
+        $ret = 0;
+        $out = [];
+        $command = "'{$this->bin}' {$cmd}";
+        $curwd = getcwd();
+        chdir($this->git);
+        exec($command, $out, $ret);
+        chdir($curwd);
+        if (0 !== (int)$ret) {
+            throw new GitException("Execute git[exit code: {$ret}] faild: [{$command}], error outputs: " . implode("\n", $out));
+        }
+        return $out;
     }
 }
