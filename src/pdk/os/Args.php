@@ -51,8 +51,8 @@ class Args {
      * - getParam('name') // John<br />
      * - getParam('age')  // 18<br />
      * - getParam('sex')  // null<br />
-     * @param string $name
-     * @param string $defaultValue
+     * @param string $name          参数名
+     * @param string $defaultValue  参数不存在时的默认值，默认 null
      * @return string
      */
     public function getParam($name, $defaultValue = null) {
@@ -93,10 +93,8 @@ class Args {
                 continue;
             }
             if (('-' === $arg{1})) {
-                if (!empty($name)) {
-                    $this->params[$name] = '';
-                }
                 $name = substr($arg, 2);
+                $this->params[$name] = '';
                 continue;
             }
             for ($i = 1; $i < strlen($arg); $i++) {

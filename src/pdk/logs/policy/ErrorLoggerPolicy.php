@@ -2,6 +2,8 @@
 
 namespace heiing\pdk\logs\policy;
 
+use heiing\pdk\logs\Level;
+
 /**
  * PHP 错误日志策略
  *

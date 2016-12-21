@@ -6,6 +6,7 @@ use heiing\pdk\git\obj\Blob;
 use heiing\pdk\git\obj\Tree;
 use heiing\pdk\git\obj\Commit;
 use heiing\pdk\git\obj\Tag;
+use heiing\pdk\os\Cmd;
 
 /**
  * Git
@@ -16,6 +17,7 @@ class Git {
     
     private $git = '.';
     private $bin = 'git';
+    private $cmd = null;
     
     /**
      * 创建一个 git 对象，用于执行 git 命令
@@ -25,6 +27,8 @@ class Git {
     public function __construct($repository, $bin = 'git') {
         $this->git = $repository;
         $this->bin = $bin;
+        $this->cmd = new Cmd();
+        $this->cmd->setWorkingDirectory($repository);
     }
     
     /**
@@ -118,16 +122,11 @@ class Git {
      * @throws \heiing\pdk\git\GitException
      */
     private function exec($cmd) {
-        $ret = 0;
-        $out = [];
         $command = "'{$this->bin}' {$cmd}";
-        $curwd = getcwd();
-        chdir($this->git);
-        exec($command, $out, $ret);
-        chdir($curwd);
-        if (0 !== (int)$ret) {
-            throw new GitException("Execute git[exit code: {$ret}] faild: [{$command}], error outputs: " . implode("\n", $out));
+        if (!$this->cmd->run($command)) {
+            $out = $this->cmd->getStdout() . $this->cmd->getStderr();
+            throw new GitException("Execute git[exit code: {$this->cmd->getExitCode()}] faild: [{$command}], error outputs: {$out}");
         }
-        return $out;
+        return $this->cmd->getStdout();
     }
 }

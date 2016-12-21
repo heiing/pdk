@@ -170,14 +170,25 @@ class Logger {
     }
     
     /**
+     * 致命错误
+     * @param string $message
+     * @param int $exitCode
+     */
+    public static function fatal($message, $exitCode = 1) {
+        self::error($message);
+        exit($exitCode);
+    }
+    
+    /**
      * 创建默认的日志记录器
      * @return \heiing\pdk\logs\Logger 
      */
     public static function newDefaultLogger() {
         $policy = new ErrorLoggerPolicy();
-        $stdErr = new FileWriter(defined('STDERR') ? STDERR : "php://stderr");
+        $stdout = new FileWriter(defined('STDOUT') ? STDERR : "php://stdout");
+        $stderr = new FileWriter(defined('STDERR') ? STDERR : "php://stderr");
         $fmtter = new BasicFormatter();
-        $policy->setWriter($policy->getLevels(), $stdErr);
+        $policy->setWriter($policy->getLevels(), $stderr);
         $policy->setFormatter($policy->getLevels(), $fmtter);
         return new Logger($policy);
     }

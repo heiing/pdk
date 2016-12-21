@@ -11,13 +11,10 @@ use heiing\pdk\logs\Level;
  */
 class BasicFormatter implements Formatter {
     
-    private $ln = "\n";
+    private $ln = PHP_EOL;
     private $timeFormat = 'Y-m-d H:i:s';
     
     public function __construct() {
-        if ('WIN' === strtoupper(substr(PHP_OS, 0, 3))) {
-            $this->ln = "\r\n";
-        }
     }
     
     public function setTimeForamt($format) {

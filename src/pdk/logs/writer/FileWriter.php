@@ -21,17 +21,13 @@ class FileWriter implements Writer {
             $this->file = $file;
         } else if (is_string($file)) {
             $this->file = fopen($file, 'ab');
+            if (false === $this->file) {
+                throw LogException::badFile("can not open '{$file}'");
+            }
         }
-        if (!defined('STDERR')) {
-            define('STDERR', fopen('php://stderr', 'ab'));
-        }
-        if ((null === $this->file) || !is_resource($this->file)) {
+        if (defined('STDIN') && (STDIN === $this->file)) {
             $this->file = STDOUT;
-            throw LogException::badFile("can not open '{$file}'");
-        }
-        if (defined(STDIN) && (STDIN === $this->file)) {
-            $this->file = STDOUT;
-            throw LogException::badFile("STDIN is not writable");
+            throw LogException::badFile("Stdin is not writable");
         }
     }
     

@@ -7,7 +7,7 @@ namespace heiing\pdk\file\tree;
  *
  * @author hzm
  */
-class RecursiveDirectory {
+class RecursiveDirectory implements \Iterator {
     
     private $root = '';
     
@@ -22,10 +22,15 @@ class RecursiveDirectory {
      */
     private $itr;
     
-    public function __construct($rootDirectoryPath) {
+    /**
+     * 
+     * @param string $rootDirectoryPath
+     * @param int $mode @see http://php.net/manual/en/recursiveiteratoriterator.construct.php
+     */
+    public function __construct($rootDirectoryPath, $mode = \RecursiveIteratorIterator::SELF_FIRST) {
         $this->root = $rootDirectoryPath;
         $this->dir = new \RecursiveDirectoryIterator($this->root, \FilesystemIterator::KEY_AS_FILENAME | \FilesystemIterator::CURRENT_AS_FILEINFO | \FilesystemIterator::SKIP_DOTS);
-        $this->itr = new \RecursiveIteratorIterator($this->dir);
+        $this->itr = new \RecursiveIteratorIterator($this->dir, $mode);
     }
     
     /**
@@ -43,11 +48,35 @@ class RecursiveDirectory {
     /**
      * 对目录做遍历，callback 接受 $name, $splFileInfo 两个参数
      * @param callable $callback
+     * @param \Iterator $itr     目录迭代器，默认为 null，可指定为 matchRegex 的返回值
      */
-    public function eachEntry($callback) {
-        foreach ($this->itr as $name => $splFileInfo) {
+    public function eachEntry($callback, \Iterator $itr = null) {
+        if (null === $itr) {
+            $itr = $this->itr;
+        }
+        foreach ($itr as $name => $splFileInfo) {
             $callback($name, $splFileInfo);
         }
     }
-    
+
+    public function current() {
+        return $this->itr->current();
+    }
+
+    public function key() {
+        return $this->itr->key();
+    }
+
+    public function next() {
+        $this->itr->next();
+    }
+
+    public function rewind() {
+        $this->itr->rewind();
+    }
+
+    public function valid() {
+        return $this->itr->valid();
+    }
+
 }

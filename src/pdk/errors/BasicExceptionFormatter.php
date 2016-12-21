@@ -18,16 +18,13 @@ class BasicExceptionFormatter {
     
     private $isError = false;
     
-    private $ln = "\n";
+    private $ln = PHP_EOL;
     private $pn = "    ";
     
     public function __construct(\Exception $e, $maxTraces = 20) {
         $this->e = $e;
         $this->maxTraces = $maxTraces;
         $this->isError = ($e instanceof \ErrorException);
-        if ('WIN' === strtoupper(substr(PHP_OS, 0, 3))) {
-            $this->ln = "\r\n";
-        }
     }
     
     public function isError() {
@@ -74,7 +71,12 @@ class BasicExceptionFormatter {
     }
     
     public function getTraceLine($t) {
-        return "{$this->pn}{$this->getTraceFunctionName($t)} @[{$t['file']}]:[{$t['line']}]{$this->ln}";
+        if (isset($t['file'])) {
+            $fl = " @[{$t['file']}]:[{$t['line']}]";
+        } else {
+            $fl = '';
+        }
+        return "{$this->pn}{$this->getTraceFunctionName($t)}{$fl}{$this->ln}";
     }
     
     public function getTraceLines() {

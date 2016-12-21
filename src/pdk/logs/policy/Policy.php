@@ -67,8 +67,9 @@ abstract class Policy {
      */
     public function setWriter($levels, Writer $writer) {
         for ($i = 0; $i <= Level::TopExponent; $i++) {
-            if ($this->hasLevel($i) && Level::hasLevel($levels, $i)) {
-                $this->writers[1 << $i] = $writer;
+            $level = 1 << $i;
+            if ($this->hasLevel($level) && Level::hasLevel($levels, $level)) {
+                $this->writers[$level] = $writer;
             }
         }
         return $this;
@@ -95,8 +96,9 @@ abstract class Policy {
      */
     public function setFormatter($levels, Formatter $formatter) {
         for ($i = 0; $i <= Level::TopExponent; $i++) {
-            if ($this->hasLevel($i) && Level::hasLevel($levels, $i)) {
-                $this->formatters[1 << $i] = $formatter;
+            $level = 1 << $i;
+            if ($this->hasLevel($level) && Level::hasLevel($levels, $level)) {
+                $this->formatters[$level] = $formatter;
             }
         }
         return $this;

@@ -16,8 +16,9 @@ class ConsoleStyledFormatter extends BasicFormatter {
     
     public function setStyle($levels, Style $style) {
         for ($i = 0; $i <= Level::TopExponent; $i++) {
-            if (Level::hasLevel($levels, $i)) {
-                $this->styles[1 << $i] = $style;
+            $level = 1 << $i;
+            if (Level::hasLevel($levels, $level)) {
+                $this->styles[$level] = $style;
             }
         }
         return $this;
