@@ -11,8 +11,11 @@ class Cmd {
     
     private $stdout = null;
     private $stderr = null;
-    private $code = 0;
+    private $code = -1;
     private $pipe = [];
+    
+    private $pid = 0;
+    private $statusExitCode = -1;
     
     private $wd   = null;
     private $env  = null;
@@ -20,10 +23,21 @@ class Cmd {
     private $desc = [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
     
     /**
+     * 返回进程的 PID，如果进程未启动则返回 0
+     * @return int 成功则返回进程 ID，进程未启动则返回 0
+     */
+    public function getPid() {
+        return $this->pid;
+    }
+    
+    /**
      * 获取命令退出码
      * @return int 返回命令退出码
      */
     public function getExitCode() {
+        if ((-1 === $this->code) && (-1 !== $this->statusExitCode)) {
+            return $this->statusExitCode;
+        }
         return $this->code;
     }
     
@@ -138,7 +152,7 @@ class Cmd {
     }
     
     /**
-     * 启动进程，执行 $command 命令
+     * 启动进程，执行 $command 命令。如果上一个命令未退出，则不会启动并且返回 false
      * @param string $command
      * @return boolean 成功返回 true，失败返回 false
      */
@@ -147,15 +161,17 @@ class Cmd {
             return false;
         }
         
-        $this->pipe = [];
-        $this->code = 0;
-        $this->stdout = null;
-        $this->stderr = null;
+        $this->reset();
         
         $this->proc = proc_open($command, $this->desc, $this->pipe, $this->wd, $this->env);
         if (false === $this->proc) {
             return false;
         }
+        
+        if (false === $this->status()) {
+            return false;
+        }
+        
         return is_resource($this->proc);
     }
     
@@ -186,6 +202,80 @@ class Cmd {
         $this->proc = null;
         
         return 0 === $this->code;
+    }
+    
+    /**
+     * 向进程发送信号
+     * @param ing $signal 信号，默认为 TERM(15)
+     * @return boolean 发送信号成功即返回 true，失败 返回 false
+     */
+    public function kill($signal = 15) {
+        if (!is_resource($this->proc)) {
+            return true;
+        }
+        return proc_terminate($this->proc, $signal);
+    }
+    
+    /**
+     * 向进程发送信号，一直等待进程成功退出为止
+     * @param ing $signal 信号，默认为 TERM(15)
+     * @param int $timeoutSeconds 超时秒数
+     * @return boolean 成功返回 true, 失败或超时返回 false
+     */
+    public function killWait($signal = 15, $timeoutSeconds = 10) {
+        if (false === $this->kill($signal)) {
+            return false;
+        }
+        $usleep = 100000;
+        $timeout = $timeoutSeconds * 1000000;
+        while ($usleep <= $timeout) {
+            usleep($usleep);
+            $usleep *= 2;
+            $status = $this->status();
+            if (false === $status) {
+                continue;
+            }
+            if (false === $status['running']) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    private function reset() {
+        $this->pid = 0;
+        $this->pipe = [];
+        $this->code = -1;
+        $this->stdout = null;
+        $this->stderr = null;
+        $this->statusExitCode = -1;
+    }
+    
+    private function status() {
+        if (!is_resource($this->proc)) {
+            return [
+                'command' => null,
+                'pid' => 0,
+                'running' => false,
+                'signaled' => false,
+                'stopped' => false,
+                'exitcode' => -1,
+                'termsig' => 0,
+                'stopsig' => 0,
+            ];
+        }
+        $status = proc_get_status($this->proc);
+        if (false === $status) {
+            return false;
+        }
+        $code = (int)$status['exitcode'];
+        if ($code !== -1) {
+            $this->statusExitCode = $code;
+        }
+        if ($this->pid === 0) {
+            $this->pid = (int)$status['pid'];
+        }
+        return $status;
     }
     
 }
