@@ -236,6 +236,7 @@ class Cmd {
                 continue;
             }
             if (false === $status['running']) {
+                $this->wait();
                 return true;
             }
         }
