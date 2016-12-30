@@ -42,6 +42,14 @@ class Cmd {
     }
     
     /**
+     * 获取命令的联合输出：标准输出 + (CR or LF or CRLF) + 标准错误
+     * @return string
+     */
+    public function getCombinedOutput() {
+        return $this->getStdout() . PHP_EOL . $this->getStderr();
+    }
+    
+    /**
      * 获取命令的标准输出，如果进程未启动或未结束，则返回 null
      * @return string
      */
