@@ -238,9 +238,6 @@ class HttpClient {
                 $headers[] = "{$name}: {$value}";
             }
         }
-        if (version_compare(PHP_VERSION, "5.5.0") >= 0) {
-            curl_setopt($this->curl, CURLOPT_SAFE_UPLOAD, false);
-        }
         curl_setopt($this->curl, CURLOPT_HTTPHEADER, $headers);
         curl_setopt($this->curl, CURLOPT_URL, $url);
         switch ($method) {
