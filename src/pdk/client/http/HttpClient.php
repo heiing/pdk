@@ -233,12 +233,15 @@ class HttpClient {
      */
     public function request($method, $url, $body = '') {
         curl_setopt_array($this->curl, $this->opts);
+        $headers = [];
         foreach ($this->request_headers as $name => $values) {
             foreach ($values as $value) {
                 $headers[] = "{$name}: {$value}";
             }
         }
-        curl_setopt($this->curl, CURLOPT_HTTPHEADER, $headers);
+        if (!empty($headers)) {
+            curl_setopt($this->curl, CURLOPT_HTTPHEADER, $headers);
+        }
         curl_setopt($this->curl, CURLOPT_URL, $url);
         switch ($method) {
             case 'GET':
