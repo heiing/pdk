@@ -185,11 +185,26 @@ class Logger {
      */
     public static function newDefaultLogger() {
         $policy = new ErrorLoggerPolicy();
-        $stdout = new FileWriter(defined('STDOUT') ? STDERR : "php://stdout");
         $stderr = new FileWriter(defined('STDERR') ? STDERR : "php://stderr");
         $fmtter = new BasicFormatter();
         $policy->setWriter($policy->getLevels(), $stderr);
         $policy->setFormatter($policy->getLevels(), $fmtter);
         return new Logger($policy);
+    }
+    
+    public static function setLevels($levels, $writer = null, $formatter = null) {
+        if (null === self::$logger) {
+            self::$logger = self::newDefaultLogger();
+        }
+        if (null === $writer) {
+            $writer = new FileWriter(defined('STDERR') ? STDERR : "php://stderr");
+        }
+        if (null === $formatter) {
+            $formatter = new BasicFormatter();
+        }
+        $policy = self::$logger->getPolicy();
+        $policy->setLevels($levels);
+        $policy->setWriter($levels, $writer);
+        $policy->setFormatter($levels, $formatter);
     }
 }
