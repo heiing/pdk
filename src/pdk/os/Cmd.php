@@ -22,6 +22,12 @@ class Cmd {
     private $proc = null;
     private $desc = [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
     
+    private $start_time = 0;
+    private $timeout = 0;
+    private $timeout_seconds = 0;
+    private $timeout_micro = 0;
+    private $timedout = false;
+    
     /**
      * 返回进程的 PID，如果进程未启动则返回 0
      * @return int 成功则返回进程 ID，进程未启动则返回 0
@@ -32,7 +38,7 @@ class Cmd {
     
     /**
      * 获取命令退出码
-     * @return int 返回命令退出码
+     * @return int 返回命令退出码，如果超时退出，则退出码为 -1
      */
     public function getExitCode() {
         if ((-1 === $this->code) && (-1 !== $this->statusExitCode)) {
@@ -136,6 +142,32 @@ class Cmd {
     }
     
     /**
+     * 设置超时时间（秒），使用小数表示更小的时间，比如 0.001 (1毫秒)
+     * @param float $seconds
+     */
+    public function setTimeout($seconds) {
+        $this->timeout = $seconds;
+        $this->timeout_seconds = floor($seconds);
+        $this->timeout_micro = ($seconds - $this->timeout_seconds) * 1000000;
+    }
+    
+    /**
+     * 获取超时时间（秒），小数部分表示更小的时间
+     * @return float
+     */
+    public function getTimeout() {
+        return $this->timeout;
+    }
+    
+    /**
+     * 是否已经超时
+     * @return boolean
+     */
+    public function isTimedout() {
+        return $this->timedout;
+    }
+    
+    /**
      * 将 $bytes 写入到命令的标准输入。必须在 start 之后，wait 之前调用。
      * @param string $bytes
      * @return int 返回已写入的字节数
@@ -145,6 +177,33 @@ class Cmd {
             return 0;
         }
         return fwrite($this->pipe[0], $bytes);
+    }
+    
+    /**
+     * 读取标准输出，如果设置了超时，则超时结束进程。如果需要在进程结束后读取所有的输出，请使用 getStdout()
+     * @param int $length
+     * @return boolean|string 失败返回 false，成功返回读得的字符串
+     */
+    public function read($length = 1024) {
+        if (!isset($this->pipe[1]) || !is_resource($this->pipe[1]) || (true === $this->timedout)) {
+            return false;
+        }
+        $data = fread($this->pipe[1], $length);
+        if ($this->timeout > 0) {
+            $meta = stream_get_meta_data($this->pipe[1]);
+            if ($meta['timed_out'] || (microtime(true) - $this->start_time > $this->timeout)) {
+                $this->timedout = true;
+                $this->killWait(15, 1); // SIGTERM
+            }
+        }
+        if ($data) {
+            if (null === $this->stdout) {
+                $this->stdout = $data;
+            } else {
+                $this->stdout .= $data;
+            }
+        }
+        return $data;
     }
     
     /**
@@ -180,7 +239,19 @@ class Cmd {
             return false;
         }
         
-        return is_resource($this->proc);
+        if (false === is_resource($this->proc)) {
+            return false;
+        }
+        
+        if (($this->timeout > 0) && isset($this->pipe[1]) && is_resource($this->pipe[1])) {
+            stream_set_timeout($this->pipe[1], $this->timeout_seconds, $this->timeout_micro);
+        }
+        
+        if (($this->timeout > 0) && isset($this->pipe[2]) && is_resource($this->pipe[2])) {
+            stream_set_timeout($this->pipe[2], $this->timeout_seconds, $this->timeout_micro);
+        }
+        
+        return true;
     }
     
     /**
@@ -192,7 +263,9 @@ class Cmd {
             return false;
         }
         
-        if (isset($this->pipe[1]) && is_resource($this->pipe[1])) {
+        if ($this->timeout > 0) {
+            while ($this->read()) {}
+        } else if (isset($this->pipe[1]) && is_resource($this->pipe[1])) {
             $this->stdout = stream_get_contents($this->pipe[1]);
         }
         
@@ -206,7 +279,9 @@ class Cmd {
             }
         }
         
-        $this->code = (int)proc_close($this->proc);
+        if (is_resource($this->proc)) {
+            $this->code = (int)proc_close($this->proc);
+        }
         $this->proc = null;
         
         return 0 === $this->code;
@@ -258,6 +333,8 @@ class Cmd {
         $this->stdout = null;
         $this->stderr = null;
         $this->statusExitCode = -1;
+        $this->timedout = false;
+        $this->start_time = microtime(true);
     }
     
     private function status() {
