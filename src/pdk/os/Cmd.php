@@ -41,6 +41,9 @@ class Cmd {
      * @return int 返回命令退出码，如果超时退出，则退出码为 -1
      */
     public function getExitCode() {
+        if ($this->timedout) {
+            return -1;
+        }
         if ((-1 === $this->code) && (-1 !== $this->statusExitCode)) {
             return $this->statusExitCode;
         }
@@ -180,30 +183,12 @@ class Cmd {
     }
     
     /**
-     * 读取标准输出，如果设置了超时，则超时结束进程。如果需要在进程结束后读取所有的输出，请使用 getStdout()
+     * 读取标准输出，如果设置了超时，则超时结束进程。
      * @param int $length
      * @return boolean|string 失败返回 false，成功返回读得的字符串
      */
-    public function read($length = 1024) {
-        if (!isset($this->pipe[1]) || !is_resource($this->pipe[1]) || (true === $this->timedout)) {
-            return false;
-        }
-        $data = fread($this->pipe[1], $length);
-        if ($this->timeout > 0) {
-            $meta = stream_get_meta_data($this->pipe[1]);
-            if ($meta['timed_out'] || (microtime(true) - $this->start_time > $this->timeout)) {
-                $this->timedout = true;
-                $this->killWait(15, 1); // SIGTERM
-            }
-        }
-        if ($data) {
-            if (null === $this->stdout) {
-                $this->stdout = $data;
-            } else {
-                $this->stdout .= $data;
-            }
-        }
-        return $data;
+    public function read($length = 4096) {
+        return $this->readfile($this->pipe[1], $length);
     }
     
     /**
@@ -263,27 +248,10 @@ class Cmd {
             return false;
         }
         
-        if ($this->timeout > 0) {
-            while ($this->read()) {}
-        } else if (isset($this->pipe[1]) && is_resource($this->pipe[1])) {
-            $this->stdout = stream_get_contents($this->pipe[1]);
-        }
+        $this->readOut();
+        $this->readErr();
         
-        if (isset($this->pipe[2]) && is_resource($this->pipe[2])) {
-            $this->stderr = stream_get_contents($this->pipe[2]);
-        }
-        
-        for ($i = 0; $i < count($this->pipe); $i++) {
-            if (isset($this->pipe[$i]) && is_resource($this->pipe[$i])) {
-                fclose($this->pipe[$i]);
-            }
-        }
-        
-        if (is_resource($this->proc)) {
-            $this->code = (int)proc_close($this->proc);
-        }
-        $this->proc = null;
-        
+        $this->close();
         return 0 === $this->code;
     }
     
@@ -313,19 +281,21 @@ class Cmd {
         $timeout = $timeoutSeconds * 1000000;
         while ($usleep <= $timeout) {
             usleep($usleep);
-            $usleep *= 2;
-            $status = $this->status();
-            if (false === $status) {
-                continue;
-            }
-            if (false === $status['running']) {
-                $this->wait();
+            if (!$this->isRunning()) {
                 return true;
             }
         }
         return false;
     }
     
+    public function isRunning() {
+        $status = $this->status();
+        if (false === $status) {
+            return false;
+        }
+        return $status['running'];
+    }
+
     private function reset() {
         $this->pid = 0;
         $this->pipe = [];
@@ -335,6 +305,18 @@ class Cmd {
         $this->statusExitCode = -1;
         $this->timedout = false;
         $this->start_time = microtime(true);
+    }
+    
+    private function close() {
+        for ($i = 0; $i < count($this->pipe); $i++) {
+            if (isset($this->pipe[$i]) && is_resource($this->pipe[$i])) {
+                fclose($this->pipe[$i]);
+            }
+        }
+        if (is_resource($this->proc)) {
+            $this->code = (int)proc_close($this->proc);
+        }
+        $this->proc = null;
     }
     
     private function status() {
@@ -362,6 +344,63 @@ class Cmd {
             $this->pid = (int)$status['pid'];
         }
         return $status;
+    }
+    
+    private function readOut() {
+        if (null === $this->stdout) {
+            $this->stdout = '';
+        }
+        while (false !== ($std = $this->readfile($this->pipe[1], 4096))) {
+            if ($this->isTimedout()) {
+                break;
+            }
+            if (empty($std)) {
+                continue;
+            }
+            $this->stdout .= $std;
+        }
+    }
+    
+    private function readErr() {
+        if (null === $this->stderr) {
+            $this->stderr = '';
+        }
+        while (false !== ($err = $this->readfile($this->pipe[2], 4096))) {
+            if ($this->isTimedout()) {
+                break;
+            }
+            if (empty($err)) {
+                continue;
+            }
+            $this->stderr .= $err;
+        }
+    }
+    
+    private function readfile($fd, $length) {
+        if (!isset($fd) || !is_resource($fd) || feof($fd) || $this->isTimedout()) {
+            return false;
+        }
+        
+        $bytes = fread($fd, $length);
+        if ($this->getTimeout() <= 0) {
+            return $bytes;
+        }
+        
+        $run_time = microtime(true) - $this->start_time;
+        if ($run_time >= $this->getTimeout()) {
+            $this->timedout = true;
+        } else {
+            $meta = stream_get_meta_data($fd);
+            if ($meta['timed_out']) {
+                $this->timedout = true;
+            }
+        }
+        
+        if ($this->isTimedout()) {
+            $this->killWait(15, 30); // SIGTERM
+        }
+        
+        return $bytes;
     }
     
 }
